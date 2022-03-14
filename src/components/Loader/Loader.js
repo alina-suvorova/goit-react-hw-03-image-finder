@@ -1,10 +1,12 @@
 import { Oval } from "react-loader-spinner";
 
-const Loader = () => {
+const LoaderAnimation = () => {
     return (
         <Oval color="#00BFFF" height={80} width={80} />
     );
 }
 
-export default Loader;
+export default LoaderAnimation;
+
+
 

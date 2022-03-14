@@ -1,82 +1,117 @@
-import './App.css';
-import React, { Component } from 'react'
-import Searchbar from './components/Searchbar/Searchbar';
-import {getPictures} from './components/Api'
-import ImageGallery from './components/ImageGallery/ImageGallery';
-import Button from './components/Button/Button';
-import Modal from './components/Modal/Modal';
-import Loader from './components/Loader/Loader';
+import React, {Component} from "react";
+import Api from "./components/Api";
+import Searchbar from "./components/Searchbar/Searchbar";
+import LoaderAnimation from "./components/Loader/Loader";
+import ImageGallery from "./components/ImageGallery/ImageGallery";
+import Modal from "./components/Modal/Modal";
+import Button from "./components/Button/Button";
+import style from "./App.module.css";
+
 
 
 class App extends Component {
-  state = { 
-    picture: [],
-    page: 1,
-    search: "",
-    isOpenModal: false, 
-    largeImageURL : "",
-    loader: false
-   }
+    state = {
+        searchQuery: "",
+        imageData: [],
+        isLoading: false,
+        showModalStatus: false,
+        largeImage: "",
+        currentPage: 1,
+        loadMoreStatus: false,
+    };
 
-   onHandleSubmit = (e) => {
-     e.preventDefault()
-     
-     const search = e.target.elements[1].value;
-     this.setState({page: 1, search, picture: []})
-     setTimeout(() => {
-      this.firstSearch()
-     }, 500); 
-     setTimeout(() => {
-       this.scroll()
-     }, 600); 
+    componentDidMount() {
+        document.addEventListener("keydown", this.closeModalWindow, false);
     }
-    onHandleMorePicture = (e) => {
-      this.setState(prev=>({page: prev.page += 1}))
-      setTimeout(() => {
-        this.morePictures()
-      }, 500); 
-      setTimeout(() => {
-        this.scroll()
-      }, 600); 
-   }
-   morePictures = () => {
-      this.onToggleLoader()
-      getPictures(this.state.search, this.state.page).then(data=>this.setState(prev=>({picture: [...prev.picture, ...data]}))).finally(this.onToggleLoader())
-   }
-   firstSearch = () => {
-    this.onToggleLoader()
-    getPictures(this.state.search, this.state.page).then(data=>this.setState({picture: data})).finally(this.onToggleLoader())
-   }
-   scroll = () => {
-    window.scrollTo({
-      top: document.body.scrollHeight,
-      behavior: "smooth",
-    });
-   }
-   onToggleModal = (e) => {
-     this.setState((prev) => ({ isOpenModal: !prev.isOpenModal}))
-   }
-   onModalImageUrl = (e) => {
-    this.setState({largeImageURL: e.target.id})
-    this.onToggleModal()    
-   }
-   onToggleLoader = () => {
-    //  this.setState((prev) =>({loader: !prev.loader}))
-   }
-  render() {
-    return (
-      <>
-      <Searchbar 
-        onHandleSubmit={this.onHandleSubmit}
-      />
-      {this.state.loader && <Loader/>}
-      <ImageGallery pictures={this.state.picture} onToggleModal={this.onModalImageUrl}/>
-      {!!this.state.picture.length  && <Button getMorePictures={this.onHandleMorePicture}/>}
-      {this.state.isOpenModal && <Modal largeImageURL={this.state.largeImageURL} onToggleModal={this.onToggleModal}/>}
-      </>
-    );
-  }
+
+    componentDidUpdate(prevProps, prevState) {
+        const { searchQuery, currentPage } = this.state;
+        if (
+            prevState.searchQuery !== this.state.searchQuery ||
+            prevState.currentPage !== this.state.currentPage
+        ) {
+            this.addData(searchQuery, currentPage);
+        }
+    }
+
+    componentWillUnmount() {
+        document.removeEventListener("keydown", this.closeModalWindow, false);
+    }
+
+    addData = (searchQuery, currentPage) => {
+        this.setState({ isLoading: true });
+        Api.getImage(searchQuery, currentPage)
+            .then((imageData) =>
+                this.setState((prevState) => {
+                    if (imageData.length !== 0) {
+                        return {
+                            imageData: prevState.imageData.concat(imageData),
+                            loadMoreStatus: true,
+                        };
+                    } else {
+                        return { loadMoreStatus: false };
+                    }
+                })
+            )
+            .then(() =>
+                window.scrollTo({
+                    top: document.documentElement.scrollHeight,
+                    behavior: "smooth",
+                })
+            )
+            .catch((error) => console.log(error))
+            .finally(() => this.setState({ isLoading: false }));
+    };
+
+    searchText = (inputText) => {
+        this.setState({
+            searchQuery: inputText,
+            currentPage: 1,
+            imageData: [],
+            loadMore: true,
+        });
+    };
+
+    showModalWindow = (urlLarge) => {
+        this.setState({ showModalStatus: true, largeImage: urlLarge });
+    };
+
+    closeModalWindow = (e) => {
+        if (e.keyCode === 27 || e.target.tagName === "DIV") {
+            this.setState({ showModalStatus: false, largeImage: "" });
+        }
+    };
+
+    loadMore = () => {
+        this.setState((prevState) => {
+            if (this.state.imageData.length % 12 !== 0) {
+                return { loadMoreStatus: false };
+            } else return { currentPage: prevState.currentPage + 1 };
+        });
+    };
+
+    render() {
+        const {
+            isLoading,
+            imageData,
+            largeImage,
+            showModalStatus,
+            loadMoreStatus,
+        } = this.state;
+        return (
+            <div className={style.App}>
+                <Searchbar searchText={this.searchText} />
+                {isLoading ? <LoaderAnimation /> : null}
+                <ImageGallery imageData={imageData} showModalWindow={this.showModalWindow} />
+                {showModalStatus && (
+                    <Modal urlLarge={largeImage} closeModalWindow={this.closeModalWindow} />
+                )}
+                {loadMoreStatus && <Button loadMore={this.loadMore} />}
+            </div>
+        );
+    }
 }
 
-
 export default App;
+
+

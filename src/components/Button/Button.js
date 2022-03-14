@@ -1,9 +1,11 @@
 import style from './Button.module.css'
 
-const Button = ({getMorePictures}) => {
+const Button = ({loadMore}) => {
     return (
-        <button id="loadMore" type='button' className={style.Button} onClick={getMorePictures}>Load more</button>
+        <button id="scrollHeight" className={style.Button} onClick={loadMore} >
+            Load More
+        </button>
     );
-}
+};
 
 export default Button;
